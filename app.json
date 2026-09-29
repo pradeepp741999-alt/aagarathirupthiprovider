@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Aagara Thirupthi Provider",
+    "slug": "aagara-thirupthi-provider",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "aagarathirupthiprovider",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FBF7F3",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FBF7F3"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aagarathirupthi.provider"
+    },
+    "android": {
+      "package": "com.aagarathirupthi.provider",
+      "adaptiveIcon": {
+        "backgroundColor": "#0E7C7B",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}
