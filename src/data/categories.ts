@@ -25,13 +25,19 @@ export const categories: ServiceCategory[] = [
     icon: 'mic',
     color: colors.gold,
   },
+  {
+    id: 'makeup',
+    name: 'Makeup',
+    tagline: 'Bridal, party & groom makeup styling',
+    icon: 'sparkles',
+    color: '#D946EF',
+  },
 ];
 
 export const futureCategories = [
   { id: 'photography', name: 'Photography', icon: 'camera' },
   { id: 'videography', name: 'Videography', icon: 'videocam' },
   { id: 'lighting', name: 'Lighting', icon: 'bulb' },
-  { id: 'makeup', name: 'Makeup', icon: 'color-palette' },
   { id: 'planning', name: 'Event Planning', icon: 'calendar' },
   { id: 'transport', name: 'Transportation', icon: 'car' },
   { id: 'music', name: 'Music / DJ', icon: 'musical-notes' },

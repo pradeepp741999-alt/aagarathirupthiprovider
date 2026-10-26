@@ -4,7 +4,7 @@
 // the provider's point of view, plus the CRM/reporting layer providers need
 // to run their business inside one app.
 
-export type ServiceCategoryId = 'catering' | 'decoration' | 'audio';
+export type ServiceCategoryId = 'catering' | 'decoration' | 'audio' | 'makeup';
 
 export interface ServiceCategory {
   id: ServiceCategoryId;
@@ -32,6 +32,19 @@ export interface Dish {
   price: number;
   veg: boolean;
   popular?: boolean;
+  active: boolean;
+  photo?: string;
+}
+
+export interface SpecialCombo {
+  id: string;
+  name: string;
+  description?: string;
+  includedItems: string[];
+  price: number;
+  originalPrice?: number;
+  image?: string;
+  validUntil: string;
   active: boolean;
 }
 
@@ -115,12 +128,12 @@ export interface ProviderProfile {
   reviewCount: number;
   responseTime: string;
   documents: DocumentItem[];
-  bankDetails: BankDetails;
+  bankDetails?: BankDetails;
   registrationStep: number; // 0-7, drives resume-where-you-left-off
   portfolio: string[];
 }
 
-export type AvailabilityDayStatus = 'available' | 'unavailable' | 'partial';
+export type AvailabilityDayStatus = 'available' | 'unavailable' | 'partial' | 'booked';
 
 export interface AvailabilityDay {
   date: string; // ISO date

@@ -18,24 +18,30 @@ export function LoginScreen({ navigation }: Props) {
   const [mobile, setMobile] = useState('');
   const [error, setError] = useState('');
   const setMobileStore = useAuthStore((s) => s.setMobile);
+  const sendOtp = useAuthStore((s) => s.sendOtp);
+  const isLoading = useAuthStore((s) => s.isLoading);
   const completeLogin = useAuthStore((s) => s.completeLogin);
   const loadDemoProvider = useProviderStore((s) => s.loadDemoProvider);
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     const digits = mobile.replace(/\D/g, '');
     if (digits.length !== 10) {
       setError('Enter a valid 10-digit mobile number');
       return;
     }
     setError('');
-    setMobileStore(digits);
-    navigation.navigate('Otp', { mobile: digits });
+    const res = await sendOtp(digits);
+    if (res.success) {
+      navigation.navigate('Otp', { mobile: digits });
+    } else {
+      setError(res.message || 'Failed to send OTP. Please try again.');
+    }
   };
 
   const handleDemo = () => {
-    setMobileStore('9876543210');
+    setMobileStore('9876500001');
     loadDemoProvider();
-    completeLogin();
+    completeLogin({ id: 'prov-demo', mobile: '9876500001', status: 'approved' });
   };
 
   return (
@@ -65,7 +71,7 @@ export function LoginScreen({ navigation }: Props) {
               containerStyle={{ marginTop: spacing.xxl }}
             />
 
-            <Button label="Send OTP" fullWidth size="lg" onPress={handleSendOtp} icon="arrow-forward" iconPosition="right" />
+            <Button label="Send OTP" fullWidth size="lg" loading={isLoading} onPress={handleSendOtp} icon="arrow-forward" iconPosition="right" />
 
             <Pressable onPress={handleDemo} style={styles.demoBtn}>
               <Ionicons name="flash" size={15} color={colors.secondary} />

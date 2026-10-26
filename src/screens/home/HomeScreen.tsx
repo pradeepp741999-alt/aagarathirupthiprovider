@@ -12,7 +12,8 @@ import { useProviderStore } from '../../store/useProviderStore';
 import { useEnquiryStore } from '../../store/useEnquiryStore';
 import { useBookingStore } from '../../store/useBookingStore';
 import { useNotificationStore } from '../../store/useNotificationStore';
-import { formatCompactCurrency } from '../../utils/currency';
+import { useServiceStore } from '../../store/useServiceStore';
+import { formatCompactCurrency, formatCurrency } from '../../utils/currency';
 import { formatShortDate } from '../../utils/date';
 
 type Props = CompositeScreenProps<
@@ -32,6 +33,14 @@ export function HomeScreen({ navigation }: Props) {
   const bookings = useBookingStore((s) => s.bookings);
   const unread = useNotificationStore((s) => s.unreadCount());
 
+  React.useEffect(() => {
+    // Load live cloud data from deployed backend
+    useProviderStore.getState().fetchProfile().catch(() => {});
+    useEnquiryStore.getState().fetchEnquiries().catch(() => {});
+    useBookingStore.getState().fetchBookings().catch(() => {});
+    useServiceStore.getState().fetchCatalog().catch(() => {});
+  }, []);
+
   const newLeads = enquiries.filter((e) => e.status === 'new');
   const pendingEnquiries = enquiries.filter((e) => ['new', 'reviewing', 'responded', 'confirmation_pending'].includes(e.status));
   const now = new Date();
@@ -41,6 +50,8 @@ export function HomeScreen({ navigation }: Props) {
   const monthRevenue = bookings
     .filter((b) => b.status !== 'cancelled' && new Date(b.eventDate).getMonth() === now.getMonth() && new Date(b.eventDate).getFullYear() === now.getFullYear())
     .reduce((sum, b) => sum + b.amount, 0);
+
+  const combos = useServiceStore((s) => s.combos.filter((c) => c.active));
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -98,12 +109,55 @@ export function HomeScreen({ navigation }: Props) {
             <TileButton icon="document-text" label="Enquiries" iconColor={colors.info} badge={newLeads.length} onPress={() => navigation.navigate('MainTabs', { screen: 'Enquiries' })} style={styles.tile} />
             <TileButton icon="calendar" label="Bookings" iconColor={colors.secondary} onPress={() => navigation.navigate('MainTabs', { screen: 'Bookings' })} style={styles.tile} />
             <TileButton icon="restaurant" label="Services" iconColor={colors.primary} onPress={() => navigation.navigate('ServicesManagement')} style={styles.tile} />
+            <TileButton icon="sparkles" label="Combos" iconColor={colors.primaryDark} badge={combos.length} onPress={() => navigation.navigate('ServicesManagement', { initialTab: 'combos' })} style={styles.tile} />
             <TileButton icon="time" label="Availability" iconColor={colors.gold} onPress={() => navigation.navigate('AvailabilityCalendar')} style={styles.tile} />
             <TileButton icon="star" label="Reviews" iconColor={colors.gold} onPress={() => navigation.navigate('Reviews')} style={styles.tile} />
             <TileButton icon="people" label="Customers" iconColor={colors.info} onPress={() => navigation.navigate('MainTabs', { screen: 'Crm' })} style={styles.tile} />
             <TileButton icon="stats-chart" label="Reports" iconColor={colors.primary} onPress={() => navigation.navigate('Reports')} style={styles.tile} />
-            <TileButton icon="wallet" label="Earnings" iconColor={colors.success} onPress={() => navigation.navigate('Earnings')} style={styles.tile} />
           </View>
+
+          {combos.length > 0 && (
+            <>
+              <SectionHeader
+                title="Special Combos"
+                actionLabel="Manage"
+                onAction={() => navigation.navigate('ServicesManagement', { initialTab: 'combos' })}
+              />
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.sm }}>
+                {combos.map((c) => (
+                  <Pressable
+                    key={c.id}
+                    style={[styles.homeComboCard, shadow.sm]}
+                    onPress={() => navigation.navigate('ComboEditor', { comboId: c.id })}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={[type.bodyMedium, { color: colors.ink, fontWeight: '700', flex: 1 }]} numberOfLines={1}>
+                        {c.name}
+                      </Text>
+                      <View style={styles.homeComboBadge}>
+                        <Text style={[type.tiny, { color: colors.primaryDark, fontWeight: '700' }]}>SPECIAL</Text>
+                      </View>
+                    </View>
+                    <Text style={[type.caption, { color: colors.muted, marginVertical: 4 }]} numberOfLines={1}>
+                      {c.includedItems.join(' · ')}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: spacing.xs }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+                        <Text style={[type.h3, { color: colors.primaryDark }]}>{formatCurrency(c.price)}</Text>
+                        {c.originalPrice && (
+                          <Text style={[type.caption, { color: colors.muted, textDecorationLine: 'line-through' }]}>
+                            {formatCurrency(c.originalPrice)}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={[type.tiny, { color: colors.muted }]}>Till {c.validUntil}</Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              <View style={{ height: spacing.lg }} />
+            </>
+          )}
 
           {newLeads.length > 0 && (
             <>
@@ -170,5 +224,19 @@ const styles = StyleSheet.create({
   dateBox: {
     width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.primarySoft,
     alignItems: 'center', justifyContent: 'center',
+  },
+  homeComboCard: {
+    width: 240,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    padding: spacing.md,
+  },
+  homeComboBadge: {
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
   },
 });

@@ -30,10 +30,15 @@ const stageFilters: { key: CrmStage | 'all'; label: string }[] = [
 
 export function CustomersScreen({ navigation }: Props) {
   const customers = useCrmStore((s) => s.customers);
+  const fetchCustomers = useCrmStore((s) => s.fetchCustomers);
   const [stage, setStage] = useState<CrmStage | 'all'>('all');
   const [query, setQuery] = useState('');
 
-  const totalLifetimeValue = customers.reduce((sum, c) => sum + c.lifetimeValue, 0);
+  React.useEffect(() => {
+    fetchCustomers().catch(() => {});
+  }, []);
+
+  const totalLifetimeValue = customers.reduce((sum, c) => sum + (c.lifetimeValue || 0), 0);
 
   const filtered = useMemo(() => {
     let list = customers;

@@ -38,7 +38,7 @@ export function EarningsScreen({ navigation }: Props) {
           <Card style={{ flex: 1 }}>
             <Ionicons name="card-outline" size={16} color={colors.primary} />
             <Text style={[type.h3, { color: colors.ink, marginTop: spacing.sm }]} numberOfLines={1}>
-              {bankDetails.accountNumber ? '••••' + bankDetails.accountNumber.slice(-4) : '—'}
+              {bankDetails?.accountNumber ? '••••' + bankDetails.accountNumber.slice(-4) : '—'}
             </Text>
             <Text style={[type.caption, { color: colors.muted }]}>Payout Account</Text>
           </Card>

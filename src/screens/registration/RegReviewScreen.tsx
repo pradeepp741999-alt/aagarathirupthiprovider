@@ -16,8 +16,19 @@ export function RegReviewScreen({ navigation }: Props) {
   const provider = useProviderStore((s) => s.provider);
   const submitForApproval = useProviderStore((s) => s.submitForApproval);
 
+  const isMakeup = provider.category === 'makeup';
   const categoryLabel = categories.find((c) => c.id === provider.category)?.name ?? provider.category;
   const districtLabel = districts.find((d) => d.id === provider.district)?.name ?? provider.district;
+
+  const activeDocuments = provider.documents.filter((d) => {
+    if (d.id === 'doc-bank') return false;
+    if (d.id === 'doc-fssai' && provider.category !== 'catering') return false;
+    return true;
+  });
+
+  const capacityText = isMakeup
+    ? `Up to ${provider.maxCapacity} clients / day`
+    : `${provider.minCapacity} – ${provider.maxCapacity} guests`;
 
   const sections: { title: string; icon: keyof typeof Ionicons.glyphMap; onEdit: () => void; rows: [string, string][] }[] = [
     {
@@ -31,13 +42,13 @@ export function RegReviewScreen({ navigation }: Props) {
       ],
     },
     {
-      title: 'Category & Capacity',
+      title: isMakeup ? 'Category & Services' : 'Category & Capacity',
       icon: 'grid-outline',
       onEdit: () => navigation.navigate('RegCategory'),
       rows: [
         ['Category', categoryLabel],
-        ['Capacity', `${provider.minCapacity} – ${provider.maxCapacity} guests`],
-        ['Years Active', String(provider.yearsActive)],
+        ['Capacity', capacityText],
+        ['Experience', `${provider.yearsActive} years`],
       ],
     },
     {
@@ -54,7 +65,7 @@ export function RegReviewScreen({ navigation }: Props) {
       icon: 'location-outline',
       onEdit: () => navigation.navigate('RegCoverageArea'),
       rows: [
-        ['District', districtLabel],
+        ['Districts', districtLabel || provider.district || 'All Districts'],
         ['Areas', provider.areas.join(', ') || '—'],
         ['Travel Distance', `${provider.serviceAreas[0]?.travelDistanceKm ?? 0} km`],
       ],
@@ -63,25 +74,29 @@ export function RegReviewScreen({ navigation }: Props) {
       title: 'Documents',
       icon: 'document-text-outline',
       onEdit: () => navigation.navigate('RegDocuments'),
-      rows: [['Uploaded', `${provider.documents.filter((d) => d.status !== 'missing').length} / ${provider.documents.length}`]],
-    },
-    {
-      title: 'Bank Details',
-      icon: 'card-outline',
-      onEdit: () => navigation.navigate('RegBankDetails'),
       rows: [
-        ['Account Holder', provider.bankDetails.accountHolder],
-        ['Account Number', provider.bankDetails.accountNumber ? '••••' + provider.bankDetails.accountNumber.slice(-4) : ''],
+        [
+          'Uploaded',
+          `${activeDocuments.filter((d) => d.status !== 'missing').length} / ${activeDocuments.length} documents`,
+        ],
       ],
     },
   ];
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('RegDocuments');
+    }
+  };
+
   return (
     <RegistrationLayout
-      stepIndex={7}
+      stepIndex={6}
       title="Review & submit"
       subtitle="Double-check your details. Our team will review your application after submission."
-      onBack={() => navigation.goBack()}
+      onBack={handleBack}
       onContinue={submitForApproval}
       continueLabel="Submit for Approval"
     >

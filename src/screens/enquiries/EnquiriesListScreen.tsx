@@ -31,8 +31,13 @@ const filters: { key: string; label: string }[] = [
 
 export function EnquiriesListScreen({ navigation }: Props) {
   const enquiries = useEnquiryStore((s) => s.enquiries);
+  const fetchEnquiries = useEnquiryStore((s) => s.fetchEnquiries);
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
+
+  React.useEffect(() => {
+    fetchEnquiries().catch(() => {});
+  }, []);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: enquiries.length };

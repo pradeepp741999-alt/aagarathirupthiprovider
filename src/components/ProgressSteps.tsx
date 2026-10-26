@@ -1,22 +1,29 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, type } from '../theme';
 
 interface Props {
   steps: string[];
   currentIndex: number;
+  onStepPress?: (index: number) => void;
 }
 
-export function ProgressSteps({ steps, currentIndex }: Props) {
+export function ProgressSteps({ steps, currentIndex, onStepPress }: Props) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {steps.map((step, i) => {
         const done = i < currentIndex;
         const active = i === currentIndex;
+        const clickable = Boolean(onStepPress && i <= currentIndex);
         return (
           <React.Fragment key={step}>
-            <View style={styles.stepCol}>
+            <Pressable
+              onPress={() => clickable && onStepPress?.(i)}
+              disabled={!clickable}
+              style={[styles.stepCol, clickable && { opacity: 1 }]}
+              hitSlop={6}
+            >
               <View
                 style={[
                   styles.dot,
@@ -38,7 +45,7 @@ export function ProgressSteps({ steps, currentIndex }: Props) {
               >
                 {step}
               </Text>
-            </View>
+            </Pressable>
             {i < steps.length - 1 && (
               <View style={[styles.line, { backgroundColor: done ? colors.primary : colors.border }]} />
             )}

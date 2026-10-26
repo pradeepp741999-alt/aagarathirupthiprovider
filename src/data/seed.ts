@@ -9,15 +9,16 @@ import {
   MenuPackage,
   ProviderProfile,
   Review,
+  SpecialCombo,
 } from './types';
 import { colors } from '../theme';
 import { authPhoto } from '../theme/images';
 
 export const seedDocuments: DocumentItem[] = [
   { id: 'doc-id', label: 'Owner ID Proof (Aadhaar / PAN)', required: true, status: 'verified', fileName: 'aadhaar_front.jpg' },
-  { id: 'doc-fssai', label: 'FSSAI / Trade License', required: true, status: 'verified', fileName: 'fssai_license.pdf' },
   { id: 'doc-address', label: 'Business Address Proof', required: true, status: 'uploaded', fileName: 'shop_agreement.pdf' },
-  { id: 'doc-bank', label: 'Bank Proof (Passbook / Cancelled Cheque)', required: true, status: 'uploaded', fileName: 'passbook_page.jpg' },
+  { id: 'doc-trade', label: 'Trade License (optional)', required: false, status: 'verified', fileName: 'trade_license.pdf' },
+  { id: 'doc-fssai', label: 'FSSAI Certificate (optional)', required: false, status: 'verified', fileName: 'fssai_license.pdf' },
   { id: 'doc-gst', label: 'GST Certificate (optional)', required: false, status: 'missing' },
 ];
 
@@ -470,4 +471,40 @@ export const seedNotifications: AppNotification[] = [
   { id: 'n3', title: 'New review', message: 'Anitha Selvam left a 5-star review for your Wedding service.', time: daysAgo(1), read: false, type: 'review' },
   { id: 'n4', title: 'Document verified', message: 'Your FSSAI license has been verified by the admin team.', time: daysAgo(6), read: true, type: 'approval' },
   { id: 'n5', title: 'Profile approved', message: 'Your provider profile is now live and visible to customers.', time: daysAgo(30), read: true, type: 'approval' },
+];
+
+export const seedCombos: SpecialCombo[] = [
+  {
+    id: 'combo-1',
+    name: 'Royal Wedding Feast Combo',
+    description: 'Complete South Indian marriage banquet with 18 items + live dessert counters.',
+    includedItems: ['Ghee Biriyani', 'Mutton Sukka', 'Chicken 65', 'Elaneer Payasam', 'Live Ice Cream'],
+    price: 380,
+    originalPrice: 450,
+    image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80',
+    validUntil: '31 Dec 2026',
+    active: true,
+  },
+  {
+    id: 'combo-2',
+    name: 'Engagement Celebration Combo',
+    description: 'Signature evening high-tea & buffet package for engagement and betrothal ceremonies.',
+    includedItems: ['Welcome Drinks', 'Veg Spring Roll', 'Paneer Butter Masala', 'Malabar Parotta', 'Gulab Jamun with Ice Cream'],
+    price: 260,
+    originalPrice: 320,
+    image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
+    validUntil: '15 Nov 2026',
+    active: true,
+  },
+  {
+    id: 'combo-3',
+    name: 'Traditional Seemantham Combo',
+    description: 'Special 5-variety rice banquet with traditional sweets and hot savouries.',
+    includedItems: ['Lemon Rice', 'Curd Rice', 'Sambar Rice', 'Tamarind Rice', 'Mysore Pak', 'Medhu Vada'],
+    price: 190,
+    originalPrice: 240,
+    image: 'https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?auto=format&fit=crop&w=600&q=80',
+    validUntil: '20 Nov 2026',
+    active: true,
+  },
 ];

@@ -11,7 +11,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Otp'>;
 
-const OTP_LENGTH = 4;
+const OTP_LENGTH = 6;
 const HERO_HEIGHT = 220;
 
 export function OtpScreen({ navigation, route }: Props) {
@@ -20,7 +20,9 @@ export function OtpScreen({ navigation, route }: Props) {
   const [error, setError] = useState('');
   const [timer, setTimer] = useState(30);
   const inputs = useRef<Array<TextInput | null>>([]);
-  const completeLogin = useAuthStore((s) => s.completeLogin);
+  const verifyOtp = useAuthStore((s) => s.verifyOtp);
+  const sendOtp = useAuthStore((s) => s.sendOtp);
+  const isLoading = useAuthStore((s) => s.isLoading);
 
   useEffect(() => {
     if (timer <= 0) return;
@@ -45,13 +47,22 @@ export function OtpScreen({ navigation, route }: Props) {
     }
   };
 
-  const handleVerify = () => {
-    if (digits.some((d) => d === '')) {
-      setError('Enter the complete OTP');
+  const handleVerify = async () => {
+    const code = digits.join('');
+    if (code.length !== OTP_LENGTH) {
+      setError('Enter the complete 6-digit OTP');
       return;
     }
-    // Demo app: any 4-digit code is accepted (no real SMS backend wired up yet).
-    completeLogin();
+    const res = await verifyOtp(mobile, code);
+    if (!res.success) {
+      setError(res.message || 'Invalid OTP. Please check and try again.');
+    }
+  };
+
+  const handleResend = async () => {
+    setTimer(30);
+    setError('');
+    await sendOtp(mobile);
   };
 
   return (
@@ -69,7 +80,7 @@ export function OtpScreen({ navigation, route }: Props) {
         </View>
         <Text style={[type.h1, { color: colors.ink, marginTop: spacing.xl }]}>Verify OTP</Text>
         <Text style={[type.body, { color: colors.muted, marginTop: 6 }]}>
-          Enter the 4-digit code sent to{'\n'}
+          Enter the 6-digit code sent to{'\n'}
           <Text style={{ color: colors.ink, fontFamily: type.bodyMedium.fontFamily }}>+91 {mobile}</Text>
         </Text>
 
@@ -91,13 +102,13 @@ export function OtpScreen({ navigation, route }: Props) {
         </View>
         {error ? <Text style={[type.caption, { color: colors.danger, marginTop: 8 }]}>{error}</Text> : null}
 
-        <Button label="Verify & Continue" fullWidth size="lg" onPress={handleVerify} style={{ marginTop: spacing.xxl }} />
+        <Button label="Verify & Continue" fullWidth size="lg" loading={isLoading} onPress={handleVerify} style={{ marginTop: spacing.xxl }} />
 
         <View style={styles.resendRow}>
           {timer > 0 ? (
             <Text style={[type.caption, { color: colors.muted }]}>Resend OTP in 0:{timer.toString().padStart(2, '0')}</Text>
           ) : (
-            <Pressable onPress={() => setTimer(30)}>
+            <Pressable onPress={handleResend}>
               <Text style={[type.bodyMedium, { color: colors.primary }]}>Resend OTP</Text>
             </Pressable>
           )}
@@ -132,19 +143,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  otpRow: { flexDirection: 'row', marginTop: spacing.xxl },
+  otpRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xxl },
   otpBox: {
-    width: 60,
-    height: 60,
-    borderRadius: radius.lg,
+    width: 44,
+    height: 50,
+    borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
     textAlign: 'center',
-    fontSize: 22,
+    fontSize: 20,
     fontFamily: type.h2.fontFamily,
     color: colors.ink,
-    marginRight: spacing.md,
     outlineStyle: 'none' as any,
   },
   otpBoxFilled: { borderColor: colors.primary, backgroundColor: colors.surface },

@@ -15,10 +15,10 @@ export function RegBankDetailsScreen({ navigation }: Props) {
   const setBankDetails = useProviderStore((s) => s.setBankDetails);
   const goToStep = useProviderStore((s) => s.goToStep);
 
-  const [accountHolder, setAccountHolder] = useState(provider.bankDetails.accountHolder || provider.ownerName);
-  const [accountNumber, setAccountNumber] = useState(provider.bankDetails.accountNumber);
-  const [ifsc, setIfsc] = useState(provider.bankDetails.ifsc);
-  const [upiId, setUpiId] = useState(provider.bankDetails.upiId ?? '');
+  const [accountHolder, setAccountHolder] = useState(provider.bankDetails?.accountHolder || provider.ownerName);
+  const [accountNumber, setAccountNumber] = useState(provider.bankDetails?.accountNumber || '');
+  const [ifsc, setIfsc] = useState(provider.bankDetails?.ifsc || '');
+  const [upiId, setUpiId] = useState(provider.bankDetails?.upiId ?? '');
   const [error, setError] = useState('');
 
   const handleContinue = () => {

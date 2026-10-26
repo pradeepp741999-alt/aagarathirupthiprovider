@@ -12,6 +12,7 @@ import { PendingApprovalScreen } from '../screens/auth/PendingApprovalScreen';
 import { ServicesManagementScreen } from '../screens/services/ServicesManagementScreen';
 import { DishEditorScreen } from '../screens/services/DishEditorScreen';
 import { PackageEditorScreen } from '../screens/services/PackageEditorScreen';
+import { ComboEditorScreen } from '../screens/services/ComboEditorScreen';
 import { AvailabilityCalendarScreen } from '../screens/services/AvailabilityCalendarScreen';
 import { EnquiryDetailScreen } from '../screens/enquiries/EnquiryDetailScreen';
 import { BookingDetailScreen } from '../screens/bookings/BookingDetailScreen';
@@ -29,7 +30,12 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const checkSession = useAuthStore((s) => s.checkSession);
   const provider = useProviderStore((s) => s.provider);
+
+  React.useEffect(() => {
+    checkSession().catch(() => {});
+  }, []);
 
   const registrationComplete = provider.registrationStep >= registrationSteps.length;
   const isLive = provider.status === 'approved';
@@ -51,6 +57,7 @@ export function RootNavigator() {
           <Stack.Screen name="ServicesManagement" component={ServicesManagementScreen} />
           <Stack.Screen name="DishEditor" component={DishEditorScreen} />
           <Stack.Screen name="PackageEditor" component={PackageEditorScreen} />
+          <Stack.Screen name="ComboEditor" component={ComboEditorScreen} />
           <Stack.Screen name="AvailabilityCalendar" component={AvailabilityCalendarScreen} />
           <Stack.Screen name="EnquiryDetail" component={EnquiryDetailScreen} />
           <Stack.Screen name="BookingDetail" component={BookingDetailScreen} />

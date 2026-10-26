@@ -7,7 +7,6 @@ import { RegServiceDetailsScreen } from '../screens/registration/RegServiceDetai
 import { RegPricingScreen } from '../screens/registration/RegPricingScreen';
 import { RegCoverageAreaScreen } from '../screens/registration/RegCoverageAreaScreen';
 import { RegDocumentsScreen } from '../screens/registration/RegDocumentsScreen';
-import { RegBankDetailsScreen } from '../screens/registration/RegBankDetailsScreen';
 import { RegReviewScreen } from '../screens/registration/RegReviewScreen';
 
 const Stack = createNativeStackNavigator<RegistrationStackParamList>();
@@ -21,7 +20,6 @@ export function RegistrationNavigator() {
       <Stack.Screen name="RegPricing" component={RegPricingScreen} />
       <Stack.Screen name="RegCoverageArea" component={RegCoverageAreaScreen} />
       <Stack.Screen name="RegDocuments" component={RegDocumentsScreen} />
-      <Stack.Screen name="RegBankDetails" component={RegBankDetailsScreen} />
       <Stack.Screen name="RegReview" component={RegReviewScreen} />
     </Stack.Navigator>
   );

@@ -7,6 +7,7 @@ interface NotificationState {
   unreadCount: () => number;
   markAllRead: () => void;
   markRead: (id: string) => void;
+  addNotification: (n: AppNotification) => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
@@ -15,4 +16,5 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   markAllRead: () => set((s) => ({ notifications: s.notifications.map((n) => ({ ...n, read: true })) })),
   markRead: (id) =>
     set((s) => ({ notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) })),
+  addNotification: (n) => set((s) => ({ notifications: [n, ...s.notifications] })),
 }));

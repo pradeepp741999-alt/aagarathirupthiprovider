@@ -3,6 +3,9 @@ import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RegistrationStackParamList } from '../../navigation/types';
 import { colors, spacing, type, radius } from '../../theme';
 import { Button, ProgressSteps } from '../../components';
 import { registrationSteps } from '../../store/useProviderStore';
@@ -19,6 +22,16 @@ interface Props {
   continueDisabled?: boolean;
 }
 
+const stepRouteNames: (keyof RegistrationStackParamList)[] = [
+  'RegBusinessInfo',
+  'RegCategory',
+  'RegServiceDetails',
+  'RegPricing',
+  'RegCoverageArea',
+  'RegDocuments',
+  'RegReview',
+];
+
 export function RegistrationLayout({
   stepIndex,
   title,
@@ -30,13 +43,34 @@ export function RegistrationLayout({
   onContinue,
   continueDisabled,
 }: Props) {
+  const navigation = useNavigation<NativeStackNavigationProp<RegistrationStackParamList>>();
+
+  const handleStepPress = (idx: number) => {
+    if (idx === stepIndex) return;
+    const targetRoute = stepRouteNames[idx];
+    if (targetRoute) {
+      navigation.navigate(targetRoute as any);
+    }
+  };
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else if (stepIndex > 0) {
+      const prevRoute = stepRouteNames[stepIndex - 1];
+      if (prevRoute) navigation.navigate(prevRoute as any);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={styles.header}>
           <View style={styles.headerRow}>
-            {onBack ? (
-              <Pressable onPress={onBack} style={styles.backBtn} hitSlop={8}>
+            {stepIndex > 0 || onBack ? (
+              <Pressable onPress={handleBack} style={styles.backBtn} hitSlop={8}>
                 <Ionicons name="chevron-back" size={22} color={colors.ink} />
               </Pressable>
             ) : (
@@ -47,7 +81,11 @@ export function RegistrationLayout({
             </Text>
             <View style={styles.backBtn} />
           </View>
-          <ProgressSteps steps={registrationSteps} currentIndex={stepIndex} />
+          <ProgressSteps
+            steps={registrationSteps}
+            currentIndex={stepIndex}
+            onStepPress={handleStepPress}
+          />
         </View>
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">

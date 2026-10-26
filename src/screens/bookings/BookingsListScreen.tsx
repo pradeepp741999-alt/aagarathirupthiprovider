@@ -25,7 +25,12 @@ const tabs = [
 
 export function BookingsListScreen({ navigation }: Props) {
   const bookings = useBookingStore((s) => s.bookings);
+  const fetchBookings = useBookingStore((s) => s.fetchBookings);
   const [tab, setTab] = useState('upcoming');
+
+  React.useEffect(() => {
+    fetchBookings().catch(() => {});
+  }, []);
 
   const filtered = useMemo(() => {
     const now = new Date(new Date().toDateString());

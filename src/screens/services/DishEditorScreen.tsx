@@ -19,17 +19,33 @@ export function DishEditorScreen({ navigation, route }: Props) {
   const [name, setName] = useState(dish?.name ?? '');
   const [category, setCategory] = useState(dish?.category ?? dishCategories[0]);
   const [price, setPrice] = useState(dish ? String(dish.price) : '');
+  const [photo, setPhoto] = useState(dish?.photo ?? '');
   const [veg, setVeg] = useState(dish?.veg ?? true);
   const [popular, setPopular] = useState(dish?.popular ?? false);
   const [active, setActive] = useState(dish?.active ?? true);
   const [error, setError] = useState('');
+
+  const samplePhotos = [
+    { label: 'Biriyani', url: 'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=400&q=80' },
+    { label: 'Meals', url: 'https://images.unsplash.com/photo-1610057099443-fde8c4d50f91?auto=format&fit=crop&w=400&q=80' },
+    { label: 'Sweets', url: 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?auto=format&fit=crop&w=400&q=80' },
+    { label: 'Dessert', url: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=400&q=80' },
+  ];
 
   const handleSave = () => {
     if (!name.trim() || !price) {
       setError('Dish name and price are required');
       return;
     }
-    const payload = { name: name.trim(), category, price: Number(price), veg, popular, active };
+    const payload = {
+      name: name.trim(),
+      category,
+      price: Number(price),
+      veg,
+      popular,
+      active,
+      photo: photo.trim() || undefined,
+    };
     if (dish) updateDish(dish.id, payload);
     else addDish(payload);
     navigation.goBack();
@@ -46,6 +62,28 @@ export function DishEditorScreen({ navigation, route }: Props) {
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
         <Input label="Dish Name" icon="restaurant-outline" value={name} onChangeText={setName} placeholder="e.g. Ghee Biriyani" error={error} />
         <Input label="Price (₹)" icon="cash-outline" keyboardType="number-pad" value={price} onChangeText={(v) => setPrice(v.replace(/\D/g, ''))} />
+
+        <Input
+          label="Photo (Image URL)"
+          icon="image-outline"
+          value={photo}
+          onChangeText={setPhoto}
+          placeholder="https://... or choose below"
+        />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.lg }}>
+          {samplePhotos.map((p) => (
+            <Chip
+              key={p.label}
+              label={p.label}
+              icon="camera-outline"
+              selected={photo === p.url}
+              onPress={() => setPhoto(p.url)}
+            />
+          ))}
+          {photo ? (
+            <Chip label="Clear photo" icon="trash-outline" onPress={() => setPhoto('')} tone="danger" />
+          ) : null}
+        </View>
 
         <Text style={[type.bodyMedium, { color: colors.ink, marginBottom: spacing.sm }]}>Category</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.xl }}>

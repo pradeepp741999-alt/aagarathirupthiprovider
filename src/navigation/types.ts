@@ -13,7 +13,7 @@ export type RegistrationStackParamList = {
   RegPricing: undefined;
   RegCoverageArea: undefined;
   RegDocuments: undefined;
-  RegBankDetails: undefined;
+  RegBankDetails?: undefined;
   RegReview: undefined;
 };
 
@@ -30,9 +30,10 @@ export type RootStackParamList = {
   RegistrationFlow: undefined;
   PendingApproval: undefined;
   MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;
-  ServicesManagement: { initialTab?: 'dishes' | 'packages' } | undefined;
+  ServicesManagement: { initialTab?: 'dishes' | 'packages' | 'combos' } | undefined;
   DishEditor: { dishId?: string } | undefined;
   PackageEditor: { packageId?: string } | undefined;
+  ComboEditor: { comboId?: string } | undefined;
   AvailabilityCalendar: undefined;
   EnquiryDetail: { enquiryId: string };
   BookingDetail: { bookingId: string };

@@ -28,10 +28,11 @@ export const colors = {
   border: '#EEE4DA',
   divider: '#F3EBE3',
 
-  // Surfaces
-  background: '#FBF7F3',
+  // Surfaces — updated from cream (#FBF7F3) to User App lavender (#F6F4FB) as per P10.
+  // When client shares their exact hex code, it can be updated here directly.
+  background: '#F6F4FB',
   surface: '#FFFFFF',
-  surfaceAlt: '#FFF8F3',
+  surfaceAlt: '#FAF8FD',
   overlay: 'rgba(33, 26, 22, 0.55)',
 
   // Status

@@ -51,8 +51,9 @@ export const docStatusMeta: Record<DocumentItem['status'], Meta> = {
 
 export const availabilityMeta: Record<AvailabilityDayStatus, Meta> = {
   available: { label: 'Available', bg: colors.successSoft, fg: colors.success, icon: 'checkmark-circle' },
-  unavailable: { label: 'Booked', bg: colors.dangerSoft, fg: colors.danger, icon: 'close-circle' },
+  unavailable: { label: 'Blocked', bg: colors.dangerSoft, fg: colors.danger, icon: 'close-circle' },
   partial: { label: 'Partial', bg: colors.warningSoft, fg: colors.warning, icon: 'time' },
+  booked: { label: 'Booked', bg: colors.secondarySoft, fg: colors.secondaryDark, icon: 'calendar' },
 };
 
 function BaseBadge({ meta, compact }: { meta: Meta; compact?: boolean }) {

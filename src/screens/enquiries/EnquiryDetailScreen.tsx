@@ -8,10 +8,22 @@ import { Avatar, Button, Card, EnquiryStatusBadge, Input, ScreenHeader } from '.
 import { useEnquiryStore } from '../../store/useEnquiryStore';
 import { useBookingStore } from '../../store/useBookingStore';
 import { useCrmStore } from '../../store/useCrmStore';
+import { useNotificationStore } from '../../store/useNotificationStore';
+import { EnquiryStatus } from '../../data/types';
 import { formatCurrency } from '../../utils/currency';
 import { formatDateTime, formatLongDate } from '../../utils/date';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EnquiryDetail'>;
+
+const STATUS_OPTIONS: { id: EnquiryStatus; label: string; icon: keyof typeof Ionicons.glyphMap; color: string }[] = [
+  { id: 'reviewing', label: 'Reviewing', icon: 'time-outline', color: colors.info },
+  { id: 'responded', label: 'Quote Sent', icon: 'paper-plane-outline', color: colors.secondary },
+  { id: 'confirmation_pending', label: 'Accepted', icon: 'thumbs-up-outline', color: colors.primary },
+  { id: 'confirmed', label: 'Confirmed', icon: 'checkmark-circle-outline', color: colors.success },
+  { id: 'completed', label: 'Completed', icon: 'checkbox-outline', color: colors.success },
+  { id: 'cancelled', label: 'Cancelled', icon: 'close-circle-outline', color: colors.muted },
+  { id: 'rejected', label: 'Rejected', icon: 'ban-outline', color: colors.danger },
+];
 
 export function EnquiryDetailScreen({ navigation, route }: Props) {
   const { enquiryId } = route.params;
@@ -25,10 +37,12 @@ export function EnquiryDetailScreen({ navigation, route }: Props) {
   const bookings = useBookingStore((s) => s.bookings);
   const crmCustomers = useCrmStore((s) => s.customers);
   const updateStage = useCrmStore((s) => s.updateStage);
+  const addNotification = useNotificationStore((s) => s.addNotification);
 
   const [quote, setQuote] = useState(enquiry?.quote ? String(enquiry.quote) : enquiry ? String(enquiry.estimatedTotal) : '');
   const [quoteMessage, setQuoteMessage] = useState('');
   const [showReject, setShowReject] = useState(false);
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [followUp, setFollowUp] = useState('');
 
@@ -73,6 +87,35 @@ export function EnquiryDetailScreen({ navigation, route }: Props) {
     setFollowUp('');
   };
 
+  const handleStatusChange = (newStatus: EnquiryStatus) => {
+    const opt = STATUS_OPTIONS.find((s) => s.id === newStatus);
+    const label = opt?.label ?? newStatus;
+    updateStatus(enquiry.id, newStatus);
+    addMessage(enquiry.id, `Status updated to ${label}`, 'provider');
+
+    if (newStatus === 'confirmed' && !linkedBooking) {
+      createFromEnquiry(enquiry, enquiry.quote ?? enquiry.estimatedTotal);
+    }
+
+    if (linkedCustomer) {
+      if (newStatus === 'confirmed') updateStage(linkedCustomer.id, 'booked');
+      else if (newStatus === 'completed') updateStage(linkedCustomer.id, 'completed');
+      else if (newStatus === 'cancelled' || newStatus === 'rejected') updateStage(linkedCustomer.id, 'lost');
+      else if (newStatus === 'responded') updateStage(linkedCustomer.id, 'quoted');
+    }
+
+    addNotification({
+      id: `notif-${Date.now()}`,
+      title: 'Enquiry status updated',
+      message: `${enquiry.customerName}'s event enquiry marked as ${label}.`,
+      time: 'Just now',
+      read: false,
+      type: 'enquiry',
+    });
+
+    setShowStatusPicker(false);
+  };
+
   const call = (mobile: string) => Linking.openURL(`tel:${mobile}`).catch(() => {});
   const whatsapp = (mobile: string) => Linking.openURL(`https://wa.me/91${mobile}`).catch(() => {});
 
@@ -91,6 +134,67 @@ export function EnquiryDetailScreen({ navigation, route }: Props) {
             </View>
             <EnquiryStatusBadge status={enquiry.status} />
           </View>
+
+          <View style={styles.statusUpdateRow}>
+            <Text style={[type.caption, { color: colors.muted }]}>
+              Current Status:{' '}
+              <Text style={{ fontWeight: '700', color: colors.ink }}>
+                {STATUS_OPTIONS.find((s) => s.id === enquiry.status)?.label ?? enquiry.status}
+              </Text>
+            </Text>
+            <Pressable
+              onPress={() => setShowStatusPicker((p) => !p)}
+              style={styles.changeStatusBtn}
+              hitSlop={6}
+            >
+              <Ionicons name="create-outline" size={14} color={colors.primary} />
+              <Text style={[type.caption, { color: colors.primary, fontWeight: '700', marginLeft: 4 }]}>
+                {showStatusPicker ? 'Hide Options' : 'Update Status'}
+              </Text>
+            </Pressable>
+          </View>
+
+          {showStatusPicker && (
+            <View style={styles.statusPickerBox}>
+              <Text style={[type.caption, { color: colors.muted, marginBottom: spacing.xs, fontWeight: '700' }]}>
+                Choose New Status:
+              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                {STATUS_OPTIONS.map((opt) => {
+                  const isCurrent = enquiry.status === opt.id;
+                  return (
+                    <Pressable
+                      key={opt.id}
+                      onPress={() => handleStatusChange(opt.id)}
+                      style={[
+                        styles.statusOptionChip,
+                        isCurrent && { backgroundColor: opt.color, borderColor: opt.color },
+                      ]}
+                    >
+                      <Ionicons
+                        name={opt.icon}
+                        size={13}
+                        color={isCurrent ? colors.white : opt.color}
+                      />
+                      <Text
+                        style={[
+                          type.tiny,
+                          {
+                            color: isCurrent ? colors.white : colors.ink,
+                            fontWeight: isCurrent ? '700' : '500',
+                            marginLeft: 4,
+                          },
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           <View style={styles.contactRow}>
             <Pressable style={styles.contactBtn} onPress={() => call(enquiry.customerMobile)}>
               <Ionicons name="call" size={15} color={colors.primary} />
@@ -257,5 +361,40 @@ const styles = StyleSheet.create({
   quoteBanner: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.secondarySoft,
     borderRadius: radius.md, padding: spacing.md,
+  },
+  statusUpdateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  changeStatusBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+  },
+  statusPickerBox: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.divider,
+  },
+  statusOptionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.divider,
   },
 });
