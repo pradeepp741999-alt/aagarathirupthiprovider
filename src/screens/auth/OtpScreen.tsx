@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, Image, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { colors, spacing, type, radius } from '../../theme';
+import { colors, spacing, type, radius, shadow } from '../../theme';
 import { authPhoto } from '../../theme/images';
 import { Button } from '../../components';
 import { AuthStackParamList } from '../../navigation/types';
@@ -12,16 +12,19 @@ import { useAuthStore } from '../../store/useAuthStore';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Otp'>;
 
 const OTP_LENGTH = 6;
-const HERO_HEIGHT = 220;
+const HERO_HEIGHT = 200;
 
 export function OtpScreen({ navigation, route }: Props) {
-  const { mobile } = route.params;
-  const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(''));
+  const { mobile, email, loginType = mobile ? 'mobile' : 'email', txnId } = route.params;
+  const isEmail = loginType === 'email' || (!mobile && !!email);
+
+  const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState('');
   const [timer, setTimer] = useState(30);
   const inputs = useRef<Array<TextInput | null>>([]);
+
   const verifyOtp = useAuthStore((s) => s.verifyOtp);
-  const sendOtp = useAuthStore((s) => s.sendOtp);
+  const resendOtp = useAuthStore((s) => s.resendOtp);
   const isLoading = useAuthStore((s) => s.isLoading);
 
   useEffect(() => {
@@ -30,30 +33,85 @@ export function OtpScreen({ navigation, route }: Props) {
     return () => clearTimeout(t);
   }, [timer]);
 
+  // Handle single character or pasted text in onChangeText
   const handleChange = (value: string, index: number) => {
-    const clean = value.replace(/\D/g, '').slice(-1);
+    const clean = value.replace(/\D/g, '');
+    if (!clean) {
+      const next = [...digits];
+      next[index] = '';
+      setDigits(next);
+      return;
+    }
+
+    // Multi-character input (e.g. paste)
+    if (clean.length > 1) {
+      const chars = clean.slice(0, OTP_LENGTH).split('');
+      const next = [...digits];
+      chars.forEach((c, i) => {
+        if (i < OTP_LENGTH) next[i] = c;
+      });
+      setDigits(next);
+      setError('');
+      const focusIndex = Math.min(chars.length, OTP_LENGTH - 1);
+      inputs.current[focusIndex]?.focus();
+      return;
+    }
+
+    // Single digit input
     const next = [...digits];
-    next[index] = clean;
+    next[index] = clean.slice(-1);
     setDigits(next);
     setError('');
-    if (clean && index < OTP_LENGTH - 1) {
+
+    // Auto-advance to next box
+    if (index < OTP_LENGTH - 1) {
       inputs.current[index + 1]?.focus();
     }
   };
 
   const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !digits[index] && index > 0) {
-      inputs.current[index - 1]?.focus();
+    if (e.nativeEvent.key === 'Backspace') {
+      if (!digits[index] && index > 0) {
+        const next = [...digits];
+        next[index - 1] = '';
+        setDigits(next);
+        inputs.current[index - 1]?.focus();
+      }
+    }
+  };
+
+  // Clipboard paste support on web
+  const handleWebPaste = (e: any) => {
+    if (Platform.OS === 'web' && e?.clipboardData) {
+      const text = e.clipboardData.getData('text') || '';
+      const clean = text.replace(/\D/g, '').slice(0, OTP_LENGTH);
+      if (clean.length > 0) {
+        e.preventDefault();
+        const chars = clean.split('');
+        const next = [...digits];
+        chars.forEach((c: string, i: number) => {
+          if (i < OTP_LENGTH) next[i] = c;
+        });
+        setDigits(next);
+        setError('');
+        const focusIndex = Math.min(chars.length, OTP_LENGTH - 1);
+        inputs.current[focusIndex]?.focus();
+      }
     }
   };
 
   const handleVerify = async () => {
     const code = digits.join('');
     if (code.length !== OTP_LENGTH) {
-      setError('Enter the complete 6-digit OTP');
+      setError('Please enter the complete 6-digit OTP');
       return;
     }
-    const res = await verifyOtp(mobile, code);
+    const res = await verifyOtp({
+      mobile,
+      email,
+      otp: code,
+      txnId,
+    });
     if (!res.success) {
       setError(res.message || 'Invalid OTP. Please check and try again.');
     }
@@ -62,56 +120,123 @@ export function OtpScreen({ navigation, route }: Props) {
   const handleResend = async () => {
     setTimer(30);
     setError('');
-    await sendOtp(mobile);
+    const res = await resendOtp({ mobile, email });
+    if (!res.success) {
+      setError(res.message || 'Failed to resend OTP. Please try again.');
+    }
   };
 
   return (
     <View style={styles.root}>
       <Image source={{ uri: authPhoto(1000, 600) }} style={styles.hero} />
       <SafeAreaView style={styles.heroSafe} edges={['top']}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Ionicons name="chevron-back" size={22} color={colors.white} />
         </Pressable>
       </SafeAreaView>
 
-      <View style={styles.sheet}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="shield-checkmark" size={26} color={colors.secondary} />
-        </View>
-        <Text style={[type.h1, { color: colors.ink, marginTop: spacing.xl }]}>Verify OTP</Text>
-        <Text style={[type.body, { color: colors.muted, marginTop: 6 }]}>
-          Enter the 6-digit code sent to{'\n'}
-          <Text style={{ color: colors.ink, fontFamily: type.bodyMedium.fontFamily }}>+91 {mobile}</Text>
-        </Text>
+      <View style={styles.sheetContainer}>
+        <View style={[styles.sheet, shadow.md]}>
+          <View style={styles.iconCircle}>
+            <Ionicons name={isEmail ? 'mail-open-outline' : 'shield-checkmark'} size={28} color={colors.secondary} />
+          </View>
 
-        <View style={styles.otpRow}>
-          {digits.map((d, i) => (
-            <TextInput
-              key={i}
-              ref={(ref) => {
-                inputs.current[i] = ref;
-              }}
-              value={d}
-              onChangeText={(v) => handleChange(v, i)}
-              onKeyPress={(e) => handleKeyPress(e, i)}
-              keyboardType="number-pad"
-              maxLength={1}
-              style={[styles.otpBox, d ? styles.otpBoxFilled : null, error ? styles.otpBoxError : null]}
-            />
-          ))}
-        </View>
-        {error ? <Text style={[type.caption, { color: colors.danger, marginTop: 8 }]}>{error}</Text> : null}
+          <Text style={[type.h1, { color: colors.ink, marginTop: spacing.md }]}>
+            {isEmail ? 'Verify Email Code' : 'Verify Mobile Number'}
+          </Text>
 
-        <Button label="Verify & Continue" fullWidth size="lg" loading={isLoading} onPress={handleVerify} style={{ marginTop: spacing.xxl }} />
-
-        <View style={styles.resendRow}>
-          {timer > 0 ? (
-            <Text style={[type.caption, { color: colors.muted }]}>Resend OTP in 0:{timer.toString().padStart(2, '0')}</Text>
-          ) : (
-            <Pressable onPress={handleResend}>
-              <Text style={[type.bodyMedium, { color: colors.primary }]}>Resend OTP</Text>
+          <View style={styles.mobileRow}>
+            <Text style={[type.body, { color: colors.muted }]}>
+              {isEmail ? 'Verification code sent to ' : 'OTP sent to '}
+              <Text style={{ color: colors.ink, fontWeight: '700' }}>
+                {isEmail ? email : `+91 ${mobile}`}
+              </Text>
+            </Text>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              hitSlop={8}
+              style={styles.changeBtn}
+            >
+              <Text style={[type.caption, { color: colors.primary, fontWeight: '700' }]}>Change</Text>
             </Pressable>
-          )}
+          </View>
+
+          {/* Centered OTP Boxes */}
+          <View
+            style={styles.otpRow}
+            // @ts-ignore Web event support
+            onPaste={handleWebPaste}
+          >
+            {digits.map((d, i) => (
+              <TextInput
+                key={i}
+                ref={(ref) => {
+                  inputs.current[i] = ref;
+                }}
+                value={d}
+                onChangeText={(v) => handleChange(v, i)}
+                onKeyPress={(e) => handleKeyPress(e, i)}
+                keyboardType="number-pad"
+                maxLength={i === 0 ? 6 : 1}
+                selectTextOnFocus
+                autoFocus={i === 0}
+                style={[
+                  styles.otpBox,
+                  d ? styles.otpBoxFilled : null,
+                  error ? styles.otpBoxError : null,
+                ]}
+              />
+            ))}
+          </View>
+
+          {error ? (
+            <View style={styles.errorBox}>
+              <Ionicons name="alert-circle" size={16} color={colors.danger} />
+              <Text style={[type.caption, { color: colors.danger, marginLeft: 6 }]}>{error}</Text>
+            </View>
+          ) : null}
+
+          <Button
+            label="Verify & Continue"
+            fullWidth
+            size="lg"
+            loading={isLoading}
+            onPress={handleVerify}
+            icon="arrow-forward"
+            iconPosition="right"
+            style={{ marginTop: spacing.xl }}
+          />
+
+          <View style={styles.resendRow}>
+            {timer > 0 ? (
+              <View style={styles.timerChip}>
+                <Ionicons name="time-outline" size={14} color={colors.muted} />
+                <Text style={[type.caption, { color: colors.muted, marginLeft: 4 }]}>
+                  Resend OTP in 0:{timer.toString().padStart(2, '0')}
+                </Text>
+              </View>
+            ) : (
+              <Pressable onPress={handleResend} style={styles.resendBtn}>
+                <Ionicons name="refresh" size={14} color={colors.primary} />
+                <Text style={[type.bodyMedium, { color: colors.primary, fontWeight: '700', marginLeft: 4 }]}>
+                  Resend OTP
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
+          <View style={styles.demoHint}>
+            <Ionicons name="information-circle-outline" size={14} color={colors.muted} />
+            <Text style={[type.tiny, { color: colors.muted, marginLeft: 4 }]}>
+              Demo OTP: enter <Text style={{ fontWeight: '700' }}>123456</Text> to test instantly
+            </Text>
+          </View>
         </View>
       </View>
     </View>
@@ -123,41 +248,113 @@ const styles = StyleSheet.create({
   hero: { position: 'absolute', top: 0, left: 0, right: 0, height: HERO_HEIGHT, backgroundColor: colors.divider },
   heroSafe: { paddingHorizontal: spacing.lg },
   backBtn: {
-    width: 38, height: 38, borderRadius: radius.md, backgroundColor: colors.overlay,
-    alignItems: 'center', justifyContent: 'center', marginTop: spacing.sm,
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+  },
+  sheetContainer: {
+    flex: 1,
+    paddingTop: HERO_HEIGHT - 32,
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
   },
   sheet: {
-    flex: 1,
-    marginTop: HERO_HEIGHT - radius.xxl,
-    backgroundColor: colors.background,
-    borderTopLeftRadius: radius.xxl,
-    borderTopRightRadius: radius.xxl,
+    width: '100%',
+    maxWidth: 480,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xxl,
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
+    paddingVertical: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.divider,
   },
   iconCircle: {
-    width: 56,
-    height: 56,
+    width: 52,
+    height: 52,
     borderRadius: radius.xl,
     backgroundColor: colors.secondaryLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  otpRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.xxl },
+  mobileRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: 6,
+    gap: 8,
+  },
+  changeBtn: {
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+  },
+  otpRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: spacing.xl,
+  },
   otpBox: {
-    width: 44,
-    height: 50,
+    width: 46,
+    height: 54,
     borderRadius: radius.md,
     borderWidth: 1.5,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
     textAlign: 'center',
-    fontSize: 20,
-    fontFamily: type.h2.fontFamily,
+    fontSize: 22,
+    fontWeight: '700',
     color: colors.ink,
     outlineStyle: 'none' as any,
   },
-  otpBoxFilled: { borderColor: colors.primary, backgroundColor: colors.surface },
-  otpBoxError: { borderColor: colors.danger },
-  resendRow: { alignItems: 'center', marginTop: spacing.xl },
+  otpBoxFilled: {
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+  },
+  otpBoxError: {
+    borderColor: colors.danger,
+    backgroundColor: '#FEF2F2',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.sm,
+  },
+  resendRow: {
+    alignItems: 'center',
+    marginTop: spacing.lg,
+  },
+  timerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+  },
+  resendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  demoHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.xl,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
 });

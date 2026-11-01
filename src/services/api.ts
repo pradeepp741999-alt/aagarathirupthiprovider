@@ -1,44 +1,27 @@
 // Aagara Thirupthi Provider — Cloud API Service Client
 // Configured for deployed backend: https://aagara-backend.onrender.com/api/v1
 
+import {
+  getSyncToken,
+  saveAuthSession,
+  clearAuthSession,
+  touchWebSession,
+  isSessionValid,
+} from './storage';
+
 export const API_BASE_URL = 'https://aagara-backend.onrender.com/api/v1';
 export const APP_ROLE = 'provider';
 
-// Local storage key for persistent JWT
-const TOKEN_STORAGE_KEY = 'aagara_provider_token';
-const REFRESH_STORAGE_KEY = 'aagara_provider_refresh_token';
-
-let inMemoryToken: string | null = null;
-let inMemoryRefreshToken: string | null = null;
-
-// Safe storage access that works in Expo Web, React Native, and SSR
+// Safe storage access that handles permanent mobile persistence & 30-min web sessions
 export const tokenStorage = {
   getToken: (): string | null => {
-    if (inMemoryToken) return inMemoryToken;
-    if (typeof window !== 'undefined' && window.localStorage) {
-      inMemoryToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
-    }
-    return inMemoryToken;
+    return getSyncToken();
   },
-  setToken: (token: string, refreshToken?: string) => {
-    inMemoryToken = token;
-    if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
-      if (refreshToken) {
-        window.localStorage.setItem(REFRESH_STORAGE_KEY, refreshToken);
-      }
-    }
-    if (refreshToken) {
-      inMemoryRefreshToken = refreshToken;
-    }
+  setToken: (token: string, refreshToken?: string, authInfo?: any) => {
+    saveAuthSession(token, refreshToken, authInfo);
   },
   clearToken: () => {
-    inMemoryToken = null;
-    inMemoryRefreshToken = null;
-    if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.removeItem(TOKEN_STORAGE_KEY);
-      window.localStorage.removeItem(REFRESH_STORAGE_KEY);
-    }
+    clearAuthSession();
   },
 };
 
@@ -78,6 +61,17 @@ export async function request<T = any>(endpoint: string, options: RequestOptions
   }
 
   if (!options.skipAuth) {
+    if (!isSessionValid()) {
+      tokenStorage.clearToken();
+      return {
+        success: false,
+        error: {
+          code: 'SESSION_EXPIRED',
+          message: 'Your session has expired (30-minute limit on web). Please log in again.',
+        },
+      };
+    }
+    touchWebSession();
     const token = tokenStorage.getToken();
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -142,34 +136,93 @@ export const api = {
 
   // Auth Endpoints
   auth: {
-    sendOtp: (mobile: string) =>
-      request('/auth/send-otp', {
+    sendOtp: (payload: { mobile?: string; email?: string } | string, email?: string) => {
+      let body: any = {};
+      if (typeof payload === 'string') {
+        if (payload.includes('@')) {
+          body.email = payload.trim();
+        } else {
+          body.mobile = payload.trim();
+          if (email) body.email = email.trim();
+        }
+      } else {
+        body = { ...payload };
+      }
+      return request<{
+        mobile?: string;
+        email?: string;
+        expires_in_seconds?: number;
+        resend_available_in_seconds?: number;
+        txnId?: string;
+      }>('/auth/send-otp', {
         method: 'POST',
-        body: { mobile },
+        body,
         skipAuth: true,
-      }),
-    verifyOtp: (mobile: string, otp: string) =>
-      request<{
-        access_token: string;
-        refresh_token: string;
+      });
+    },
+
+    verifyOtp: (payload: { mobile?: string; email?: string; otp: string; txnId?: string } | string, otp?: string, txnId?: string) => {
+      let body: any = {};
+      if (typeof payload === 'string') {
+        if (payload.includes('@')) {
+          body.email = payload.trim();
+        } else {
+          body.mobile = payload.trim();
+        }
+        body.otp = otp;
+        if (txnId) body.txnId = txnId;
+      } else {
+        body = { ...payload };
+      }
+      return request<{
+        token?: string;
+        access_token?: string;
+        refreshToken?: string;
+        refresh_token?: string;
+        isNewProvider?: boolean;
         provider: {
           id: string;
-          mobile: string;
-          status: string;
-          registration_step: number;
+          mobile?: string;
+          email?: string;
+          businessName?: string;
           business_name?: string | null;
+          status: string;
+          registrationStep?: number;
+          registration_step?: number;
         };
       }>('/auth/verify-otp', {
         method: 'POST',
-        body: { mobile, otp },
+        body,
         skipAuth: true,
-      }),
-    refreshToken: (refreshToken: string) =>
-      request('/auth/refresh-token', {
+      });
+    },
+
+    resendOtp: (payload: { mobile?: string; email?: string } | string, email?: string) => {
+      let body: any = {};
+      if (typeof payload === 'string') {
+        if (payload.includes('@')) {
+          body.email = payload.trim();
+        } else {
+          body.mobile = payload.trim();
+          if (email) body.email = email.trim();
+        }
+      } else {
+        body = { ...payload };
+      }
+      return request<{ message?: string }>('/auth/resend-otp', {
         method: 'POST',
-        body: { refresh_token: refreshToken },
+        body,
+        skipAuth: true,
+      });
+    },
+
+    refreshToken: (refreshToken: string) =>
+      request<{ token?: string; access_token?: string }>('/auth/refresh-token', {
+        method: 'POST',
+        body: { refreshToken, refresh_token: refreshToken },
         skipAuth: true,
       }),
+
     logout: () => request('/auth/logout', { method: 'POST' }),
   },
 

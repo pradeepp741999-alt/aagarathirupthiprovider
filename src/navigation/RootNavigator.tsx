@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { AuthNavigator } from './AuthNavigator';
@@ -7,6 +8,7 @@ import { MainTabNavigator } from './MainTabNavigator';
 import { useAuthStore } from '../store/useAuthStore';
 import { useProviderStore } from '../store/useProviderStore';
 import { registrationSteps } from '../store/useProviderStore';
+import { colors } from '../theme';
 
 import { PendingApprovalScreen } from '../screens/auth/PendingApprovalScreen';
 import { ServicesManagementScreen } from '../screens/services/ServicesManagementScreen';
@@ -30,12 +32,21 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isInitializing = useAuthStore((s) => s.isInitializing);
   const checkSession = useAuthStore((s) => s.checkSession);
   const provider = useProviderStore((s) => s.provider);
 
   React.useEffect(() => {
     checkSession().catch(() => {});
   }, []);
+
+  if (isInitializing) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
 
   const registrationComplete = provider.registrationStep >= registrationSteps.length;
   const isLive = provider.status === 'approved';

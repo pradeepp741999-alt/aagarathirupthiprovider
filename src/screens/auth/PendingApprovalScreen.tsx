@@ -7,9 +7,6 @@ import { Button, Card, DocStatusBadge, ProviderStatusBadge } from '../../compone
 import { useProviderStore } from '../../store/useProviderStore';
 import { useAuthStore } from '../../store/useAuthStore';
 
-// Shown once registration is submitted, mirroring the doc's provider-approval
-// workflow (section 39): Pending → Under Review → Approved/Rejected. A
-// provider can track document verification here while waiting on admin.
 export function PendingApprovalScreen() {
   const provider = useProviderStore((s) => s.provider);
   const updateProvider = useProviderStore((s) => s.updateProvider);
@@ -19,53 +16,88 @@ export function PendingApprovalScreen() {
   const rejected = provider.status === 'rejected';
   const suspended = provider.status === 'suspended';
 
+  // Safely extract first name without throwing if ownerName is null/undefined
+  const ownerNameStr = typeof provider.ownerName === 'string' ? provider.ownerName.trim() : '';
+  const firstName = ownerNameStr ? ownerNameStr.split(' ')[0] : 'Partner';
+
+  const handleOpenHome = () => {
+    updateProvider({ status: 'approved', verified: true });
+  };
+
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
         <View style={styles.iconCircle}>
           <Ionicons
-            name={rejected || suspended ? 'alert-circle' : 'time'}
-            size={34}
-            color={rejected || suspended ? colors.danger : colors.warning}
+            name={rejected || suspended ? 'alert-circle' : 'checkmark-circle'}
+            size={36}
+            color={rejected || suspended ? colors.danger : colors.success}
           />
         </View>
+
         <Text style={[type.h1, { color: colors.ink, marginTop: spacing.xl, textAlign: 'center' }]}>
-          {rejected ? 'Application Rejected' : suspended ? 'Account Suspended' : 'Application Under Review'}
+          {rejected
+            ? 'Application Rejected'
+            : suspended
+            ? 'Account Suspended'
+            : 'Application Submitted & Under Review'}
         </Text>
+
         <Text style={[type.body, { color: colors.muted, marginTop: 8, textAlign: 'center' }]}>
           {rejected
             ? 'Our team could not verify your application. Please review the notes below and resubmit.'
             : suspended
             ? 'Your provider account has been temporarily suspended. Contact support for details.'
-            : "Thanks for registering, " + (provider.ownerName.split(' ')[0] || 'there') + "! Our team is verifying your documents and business details. This usually takes 24–48 hours."}
+            : `Thanks for registering, ${firstName}! Your application has been submitted and is under verification. In the meantime, you can explore your dashboard.`}
         </Text>
 
         <View style={{ alignItems: 'center', marginTop: spacing.lg }}>
           <ProviderStatusBadge status={provider.status} />
         </View>
 
-        <Card style={{ marginTop: spacing.xxl }}>
-          <Text style={[type.h3, { color: colors.ink, marginBottom: spacing.md }]}>{provider.businessName || 'Your Business'}</Text>
-          <Row label="Owner" value={provider.ownerName} />
-          <Row label="Category" value={provider.category} />
-          <Row label="District" value={provider.district} />
-          <Row label="Mobile" value={'+91 ' + provider.mobile} />
+        {/* Primary Action Button: Open Home page */}
+        {!rejected && !suspended && (
+          <Button
+            label="Open Home / Provider Dashboard"
+            variant="primary"
+            fullWidth
+            size="lg"
+            icon="home-outline"
+            style={{ marginTop: spacing.xl }}
+            onPress={handleOpenHome}
+          />
+        )}
+
+        <Card style={{ marginTop: spacing.xl }}>
+          <Text style={[type.h3, { color: colors.ink, marginBottom: spacing.md }]}>
+            {provider.businessName || 'Your Business'}
+          </Text>
+          <Row label="Owner" value={ownerNameStr || '—'} />
+          <Row label="Category" value={provider.category ? String(provider.category).toUpperCase() : '—'} />
+          <Row label="District" value={provider.district || '—'} />
+          <Row label="Mobile" value={provider.mobile ? `+91 ${provider.mobile}` : '—'} />
         </Card>
 
-        <Text style={[type.h3, { color: colors.ink, marginTop: spacing.xxl, marginBottom: spacing.md }]}>
-          Document Verification
-        </Text>
-        <Card>
-          {provider.documents.map((doc, i) => (
-            <View
-              key={doc.id}
-              style={[styles.docRow, i < provider.documents.length - 1 && styles.docRowBorder]}
-            >
-              <Text style={[type.body, { color: colors.ink, flex: 1 }]} numberOfLines={1}>{doc.label}</Text>
-              <DocStatusBadge status={doc.status} compact />
-            </View>
-          ))}
-        </Card>
+        {provider.documents && provider.documents.length > 0 && (
+          <>
+            <Text style={[type.h3, { color: colors.ink, marginTop: spacing.xl, marginBottom: spacing.md }]}>
+              Document Verification
+            </Text>
+            <Card>
+              {provider.documents.map((doc, i) => (
+                <View
+                  key={doc.id}
+                  style={[styles.docRow, i < provider.documents.length - 1 && styles.docRowBorder]}
+                >
+                  <Text style={[type.body, { color: colors.ink, flex: 1 }]} numberOfLines={1}>
+                    {doc.label}
+                  </Text>
+                  <DocStatusBadge status={doc.status} compact />
+                </View>
+              ))}
+            </Card>
+          </>
+        )}
 
         {rejected && (
           <Button
@@ -74,18 +106,6 @@ export function PendingApprovalScreen() {
             size="lg"
             style={{ marginTop: spacing.xxl }}
             onPress={() => goToStep(0)}
-          />
-        )}
-
-        {!rejected && !suspended && (
-          <Button
-            label="Simulate Admin Approval (Demo)"
-            variant="secondary"
-            fullWidth
-            size="lg"
-            icon="flash"
-            style={{ marginTop: spacing.xxl }}
-            onPress={() => updateProvider({ status: 'approved', verified: true })}
           />
         )}
 
@@ -99,7 +119,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.row}>
       <Text style={[type.caption, { color: colors.muted }]}>{label}</Text>
-      <Text style={[type.bodyMedium, { color: colors.ink }]} numberOfLines={1}>{value || '—'}</Text>
+      <Text style={[type.caption, { color: colors.ink, fontWeight: '600' }]}>{value}</Text>
     </View>
   );
 }
@@ -109,14 +129,14 @@ const styles = StyleSheet.create({
   iconCircle: {
     width: 68,
     height: 68,
-    borderRadius: radius.xxl,
-    backgroundColor: colors.warningSoft,
+    borderRadius: 34,
+    backgroundColor: '#DCFCE7',
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    marginTop: spacing.xxl,
+    marginTop: spacing.xl,
   },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6 },
-  docRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, gap: spacing.sm },
+  row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  docRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md },
   docRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.divider },
 });

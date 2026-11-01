@@ -11,11 +11,30 @@ import { RegistrationLayout } from './RegistrationLayout';
 
 type Props = NativeStackScreenProps<RegistrationStackParamList, 'RegPricing'>;
 
-const models: { id: PricingModel; label: string; desc: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { id: 'per_person', label: 'Per Person', desc: 'Charge a fixed rate per guest', icon: 'people-outline' },
-  { id: 'per_dish', label: 'Per Dish / Item', desc: 'Each dish or item priced individually', icon: 'restaurant-outline' },
-  { id: 'package', label: 'Packages', desc: 'Predefined packages with a bundled price', icon: 'cube-outline' },
-  { id: 'custom', label: 'Custom Quote', desc: 'Provide a quotation after reviewing each enquiry', icon: 'create-outline' },
+interface PricingOption {
+  id: PricingModel;
+  label: string;
+  desc: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}
+
+const cateringModels: PricingOption[] = [
+  { id: 'per_person', label: 'Per Person', desc: 'Charge a fixed rate per guest or plate', icon: 'people-outline' },
+  { id: 'per_dish', label: 'Per Dish / Item', desc: 'Each dish or menu item priced individually', icon: 'restaurant-outline' },
+  { id: 'package', label: 'Packages', desc: 'Predefined banquet packages with bundled price', icon: 'cube-outline' },
+  { id: 'custom', label: 'Custom Quote', desc: 'Provide a quotation after reviewing each requirement', icon: 'create-outline' },
+];
+
+const makeupModels: PricingOption[] = [
+  { id: 'per_person', label: 'Per Service', desc: 'Charge a fixed rate per service or makeup session', icon: 'sparkles-outline' },
+  { id: 'package', label: 'Packages', desc: 'Predefined bridal or party combo packages with bundled price', icon: 'cube-outline' },
+  { id: 'custom', label: 'Custom Quote', desc: 'Provide a quotation after reviewing event & venue needs', icon: 'create-outline' },
+];
+
+const defaultModels: PricingOption[] = [
+  { id: 'per_person', label: 'Per Event', desc: 'Fixed base rate per event setup', icon: 'calendar-outline' },
+  { id: 'package', label: 'Packages', desc: 'Predefined service bundles with fixed price', icon: 'cube-outline' },
+  { id: 'custom', label: 'Custom Quote', desc: 'Provide custom quote per event specification', icon: 'create-outline' },
 ];
 
 export function RegPricingScreen({ navigation }: Props) {
@@ -23,13 +42,47 @@ export function RegPricingScreen({ navigation }: Props) {
   const updateProvider = useProviderStore((s) => s.updateProvider);
   const goToStep = useProviderStore((s) => s.goToStep);
 
-  const [pricingModel, setPricingModel] = useState<PricingModel>(provider.pricingModel);
-  const [startingPrice, setStartingPrice] = useState(provider.startingPrice ? String(provider.startingPrice) : '');
+  const isMakeup = provider.category === 'makeup';
+  const isCatering = provider.category === 'catering';
+
+  const models = isMakeup ? makeupModels : isCatering ? cateringModels : defaultModels;
+
+  // No option selected by default for new users
+  const [pricingModel, setPricingModel] = useState<PricingModel | ''>(provider.pricingModel || '');
+  const [startingPrice, setStartingPrice] = useState(
+    provider.startingPrice && provider.startingPrice > 0 ? String(provider.startingPrice) : ''
+  );
+  const [error, setError] = useState('');
 
   const handleContinue = () => {
-    updateProvider({ pricingModel, startingPrice: Number(startingPrice) || 0 });
+    if (!pricingModel) {
+      setError('Please select a pricing option.');
+      return;
+    }
+
+    const priceNum = Number(startingPrice.replace(/\D/g, ''));
+    if (!startingPrice.trim() || priceNum <= 0) {
+      setError('Please enter starting price.');
+      return;
+    }
+
+    setError('');
+    updateProvider({ pricingModel, startingPrice: priceNum });
     goToStep(4);
     navigation.navigate('RegCoverageArea');
+  };
+
+  const getPriceLabel = () => {
+    if (isMakeup) {
+      if (pricingModel === 'package') return 'Starting package price (₹)';
+      return 'Starting price per service (₹)';
+    }
+    if (isCatering) {
+      if (pricingModel === 'per_person') return 'Starting price per plate / guest (₹)';
+      if (pricingModel === 'per_dish') return 'Lowest dish price (₹)';
+      if (pricingModel === 'package') return 'Starting package price (₹)';
+    }
+    return 'Starting price (₹)';
   };
 
   return (
@@ -40,12 +93,25 @@ export function RegPricingScreen({ navigation }: Props) {
       onBack={() => navigation.goBack()}
       onContinue={handleContinue}
     >
+      {error ? (
+        <View style={styles.errorBox}>
+          <Text style={[type.caption, { color: colors.danger }]}>{error}</Text>
+        </View>
+      ) : null}
+
+      <Text style={[type.bodyMedium, { color: colors.ink, marginBottom: spacing.sm }]}>
+        Pricing model <Text style={{ color: colors.danger }}>*</Text>
+      </Text>
+
       {models.map((m) => {
         const active = pricingModel === m.id;
         return (
           <Pressable
-            key={m.id}
-            onPress={() => setPricingModel(m.id)}
+            key={m.label}
+            onPress={() => {
+              setPricingModel(m.id);
+              setError('');
+            }}
             style={[styles.card, shadow.sm, active && { borderColor: colors.primary, borderWidth: 2 }]}
           >
             <View style={[styles.iconWrap, { backgroundColor: active ? colors.primary : colors.primarySoft }]}>
@@ -55,17 +121,25 @@ export function RegPricingScreen({ navigation }: Props) {
               <Text style={[type.bodyMedium, { color: colors.ink }]}>{m.label}</Text>
               <Text style={[type.caption, { color: colors.muted }]}>{m.desc}</Text>
             </View>
+            <Ionicons
+              name={active ? 'radio-button-on' : 'radio-button-off'}
+              size={20}
+              color={active ? colors.primary : colors.faint}
+            />
           </Pressable>
         );
       })}
 
       <Input
-        label={pricingModel === 'per_person' ? 'Starting price per person (₹)' : pricingModel === 'per_dish' ? 'Lowest dish price (₹)' : 'Starting price (₹)'}
+        label={`${getPriceLabel()} *`}
         icon="cash-outline"
         keyboardType="number-pad"
         value={startingPrice}
-        onChangeText={(v) => setStartingPrice(v.replace(/\D/g, ''))}
-        placeholder="e.g. 200"
+        onChangeText={(v) => {
+          setStartingPrice(v.replace(/\D/g, ''));
+          setError('');
+        }}
+        placeholder="e.g. 2000"
         containerStyle={{ marginTop: spacing.lg }}
       />
     </RegistrationLayout>
@@ -73,6 +147,14 @@ export function RegPricingScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  errorBox: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#F87171',
+    borderRadius: 8,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
   card: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -17,8 +17,18 @@ export function RegCategoryScreen({ navigation }: Props) {
   const updateProvider = useProviderStore((s) => s.updateProvider);
   const goToStep = useProviderStore((s) => s.goToStep);
 
-  const [category, setCategory] = useState<ServiceCategoryId>(provider.category);
-  const [secondary, setSecondary] = useState<ServiceCategoryId[]>(provider.secondaryCategories);
+  const [category, setCategory] = useState<ServiceCategoryId | ''>(provider.category || '');
+  const [secondary, setSecondary] = useState<ServiceCategoryId[]>(
+    (provider.secondaryCategories || []).filter((c) => c !== provider.category)
+  );
+  const [error, setError] = useState('');
+
+  const handleSelectCategory = (id: ServiceCategoryId) => {
+    setCategory(id);
+    setError('');
+    // Ensure primary category is excluded from additional services
+    setSecondary((prev) => prev.filter((c) => c !== id));
+  };
 
   const toggleSecondary = (id: ServiceCategoryId) => {
     if (id === category) return;
@@ -26,6 +36,10 @@ export function RegCategoryScreen({ navigation }: Props) {
   };
 
   const handleContinue = () => {
+    if (!category) {
+      setError('Please select your primary category to continue.');
+      return;
+    }
     updateProvider({ category, secondaryCategories: secondary });
     goToStep(2);
     navigation.navigate('RegServiceDetails');
@@ -44,7 +58,7 @@ export function RegCategoryScreen({ navigation }: Props) {
         return (
           <Pressable
             key={cat.id}
-            onPress={() => setCategory(cat.id)}
+            onPress={() => handleSelectCategory(cat.id)}
             style={[styles.card, shadow.sm, active && { borderColor: cat.color, borderWidth: 2 }]}
           >
             <View style={[styles.iconWrap, { backgroundColor: cat.color + '18' }]}>
@@ -63,16 +77,33 @@ export function RegCategoryScreen({ navigation }: Props) {
         );
       })}
 
-      <Text style={[type.bodyMedium, { color: colors.ink, marginTop: spacing.xl, marginBottom: spacing.sm }]}>
-        Also offer additional services? (optional)
-      </Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-        {categories
-          .filter((c) => c.id !== category)
-          .map((c) => (
-            <Chip key={c.id} label={c.name} icon={c.icon as any} selected={secondary.includes(c.id)} onPress={() => toggleSecondary(c.id)} />
-          ))}
-      </View>
+      {error ? (
+        <Text style={[type.caption, { color: colors.danger, marginTop: spacing.xs, marginBottom: spacing.sm }]}>
+          {error}
+        </Text>
+      ) : null}
+
+      {/* Render additional services only once, excluding currently selected primary category */}
+      {category ? (
+        <View style={{ marginTop: spacing.xl }}>
+          <Text style={[type.bodyMedium, { color: colors.ink, marginBottom: spacing.sm }]}>
+            Also offer additional services? (optional)
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+            {categories
+              .filter((c) => c.id !== category)
+              .map((c) => (
+                <Chip
+                  key={c.id}
+                  label={c.name}
+                  icon={c.icon as any}
+                  selected={secondary.includes(c.id)}
+                  onPress={() => toggleSecondary(c.id)}
+                />
+              ))}
+          </View>
+        </View>
+      ) : null}
     </RegistrationLayout>
   );
 }

@@ -3,7 +3,7 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 export type AuthStackParamList = {
   Onboarding: undefined;
   Login: undefined;
-  Otp: { mobile: string };
+  Otp: { mobile?: string; email?: string; loginType?: 'mobile' | 'email'; txnId?: string };
 };
 
 export type RegistrationStackParamList = {
